@@ -1,0 +1,21 @@
+{
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "compilerOptions": {
+    "allowJs": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "module": "ES6",
+    "moduleResolution": "node",
+    "target": "ES6",
+    "sourceMap": true,
+    "outDir": "dist",
+    "baseUrl": "src",
+    "allowSyntheticDefaultImports": true,
+    "declaration": true
+  }
+}

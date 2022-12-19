@@ -25,7 +25,7 @@ SOFTWARE.
 /*
 
 Usage:
-audioNode = createAudioMeter(audioContext,clipLevel,averaging,clipLag);
+const meter = new VolumeMeter(audioContext, clipLevel, averaging, clipLag);
 
 audioContext: the AudioContext you're using.
 clipLevel: the level (0 to 1) that you would consider "clipping".
@@ -38,59 +38,68 @@ clipLag: how long you would like the "clipping" indicator to show
 Access the clipping through node.checkClipping(); use node.shutdown to get rid of it.
 */
 
-function createAudioMeter(audioContext,clipLevel,averaging,clipLag) {
-	var processor = audioContext.createScriptProcessor(512);
-	processor.onaudioprocess = volumeAudioProcess;
-	processor.clipping = false;
-	processor.lastClip = 0;
-	processor.volume = 0;
-	processor.clipLevel = clipLevel || 0.98;
-	processor.averaging = averaging || 0.95;
-	processor.clipLag = clipLag || 750;
+export default class VolumeMeter {
+  public readonly clipLevel: number;
+  public readonly averaging: number;
+  public readonly clipLag: number;
 
-	// this will have no effect, since we don't copy the input to the output,
-	// but works around a current Chrome bug.
-	processor.connect(audioContext.destination);
+  public readonly processor: ScriptProcessorNode;
 
-	processor.checkClipping =
-		function(){
-			if (!this.clipping)
-				return false;
-			if ((this.lastClip + this.clipLag) < window.performance.now())
-				this.clipping = false;
-			return this.clipping;
-		};
+  public readonly audioContext: AudioContext;
+  public volume = 0;
+  public lastClip = 0;
+  public clipping = false;
 
-	processor.shutdown =
-		function(){
-			this.disconnect();
-			this.onaudioprocess = null;
-		};
+  constructor(audioContext: AudioContext, clipLevel = 0.98, averaging = 0.95, clipLag = 750) {
+    this.processor = audioContext.createScriptProcessor(512);
+    this.audioContext = audioContext;
+    this.clipLevel = clipLevel;
+    this.averaging = averaging;
+    this.clipLag = clipLag;
 
-	return processor;
-}
+    // this will have no effect, since we don't copy the input to the output,
+    // but works around a current Chrome bug.
+    this.processor.connect(this.audioContext.destination);
+    this.processor.onaudioprocess = this.volumeAudioProcess.bind(this);
+  }
 
-function volumeAudioProcess( event ) {
-	var buf = event.inputBuffer.getChannelData(0);
-    var bufLength = buf.length;
-	var sum = 0;
-    var x;
+  volumeAudioProcess(event: AudioProcessingEvent) {
+    const buf = event.inputBuffer.getChannelData(0);
+    const bufLength = buf.length;
+    let sum = 0;
+    let x;
 
-	// Do a root-mean-square on the samples: sum up the squares...
-    for (var i=0; i<bufLength; i++) {
-    	x = buf[i];
-    	if (Math.abs(x)>=this.clipLevel) {
-    		this.clipping = true;
-    		this.lastClip = window.performance.now();
-    	}
-    	sum += x * x;
+    // Do a root-mean-square on the samples: sum up the squares...
+    for (let i = 0; i < bufLength; i++) {
+      x = buf[i];
+      if (Math.abs(x) >= this.clipLevel) {
+        this.clipping = true;
+        this.lastClip = self.performance.now();
+      }
+      sum += x * x;
     }
 
     // ... then take the square root of the sum.
-    var rms =  Math.sqrt(sum / bufLength);
+    const rms = Math.sqrt(sum / bufLength);
 
     // Now smooth this out with the averaging factor applied
     // to the previous sample - take the max here because we
     // want "fast attack, slow release."
-    this.volume = Math.max(rms, this.volume*this.averaging);
+    this.volume = Math.max(rms, this.volume * this.averaging);
+  }
+
+  checkClipping(): boolean {
+    if (!this.clipping) {
+      return false;
+    }
+    if (this.lastClip + this.clipLag < window.performance.now()) {
+      this.clipping = false;
+    }
+    return this.clipping;
+  }
+
+  shutdown() {
+    this.processor.disconnect();
+    this.processor.onaudioprocess = null;
+  }
 }
