@@ -9,7 +9,7 @@
     "allowJs": true,
     "noImplicitAny": true,
     "esModuleInterop": true,
-    "module": "ES6",
+    "module": "commonjs",
     "moduleResolution": "node",
     "target": "ES6",
     "sourceMap": true,
