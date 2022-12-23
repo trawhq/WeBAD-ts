@@ -351,5 +351,6 @@ export class AudioDetection extends EventTarget {
 
   stop() {
     this.stopRunning = true;
+    this.meter.shutdown();
   }
 }
